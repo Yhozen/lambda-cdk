@@ -1,17 +1,31 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { Stack, StackProps, Duration } from "aws-cdk-lib";
 import { Construct } from "constructs";
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
-import { aws_lambda as lambda } from "aws-cdk-lib";
+import {
+  aws_lambda as lambda,
+  aws_events_targets as targets,
+} from "aws-cdk-lib";
+import { Rule, Schedule } from "aws-cdk-lib/aws-events";
+
 const path = require("node:path");
 
 export class LambdaCdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    new lambda.DockerImageFunction(this, "OtherFunction", {
-      code: lambda.DockerImageCode.fromImageAsset(
-        path.join(__dirname, "my-image")
-      ),
+    const lambdaFunction = new lambda.DockerImageFunction(
+      this,
+      "LfUpdaterFunction",
+      {
+        code: lambda.DockerImageCode.fromImageAsset(
+          path.join(__dirname, "lf-updater")
+        ),
+        timeout: Duration.minutes(10),
+      }
+    );
+
+    new Rule(this, "weeklyRule", {
+      schedule: Schedule.rate(Duration.days(7)),
+      targets: [new targets.LambdaFunction(lambdaFunction)],
     });
   }
 }
